@@ -98,10 +98,11 @@
     <select id="itemSelectBox" size="1" onChange="{ myLoadQuestion(this.value); }">
       <!-- Options will be populated dynamically -->
     </select><br>
-     Hint: <input type=text id="myHint"> <br>
+     Question Hint: <input type=text id="myHint"> <br>
 
       
-      <div style="display:block"
+      <div style="display:block">
+        <input type=text id="myPresentNumber"><br>
       <label for="storedStatement">Stored Statement hide later:</label>
       <textarea id="storedStatement" rows="3" placeholder="Enter the stored statement..."
         style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 5px;"></textarea>
@@ -373,6 +374,7 @@ function myLoadQuestion(myPassedValue) {
     document.getElementById('storedStatement').value = myItem.longDescription || '';
     document.getElementById('myHint').value = myItem.content || '';
     document.getElementById('userTest').value = '';
+    document.getElementById('myPresentNumber').value = myPassedValue;
   } else {
     console.warn('Item not found with ID:', myPassedValue);
   }
@@ -387,6 +389,8 @@ function myLoadQuestion(myPassedValue) {
         myItem2.start = now.toISOString(); // update start time to current time
         items.update(myItem2); // update the dataset
        // alert('Item 2 time updated to now.');
+        console.log('updated  myItem2')
+        console.log(myItem2)
       } else {
         alert('Item 2 not found.');
       }
