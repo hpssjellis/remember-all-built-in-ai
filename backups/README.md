@@ -23,14 +23,13 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index16.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index17.html
 
-
-
-
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index17.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index18.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index19.html
+
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index2.html
 
 
 
@@ -40,6 +39,5 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index19.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/vis01.html
 
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index2.html
 
 
