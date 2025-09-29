@@ -381,8 +381,9 @@ function myLoadQuestion(myPassedValue) {
 }
 
 
-    function myUpdateMemory(myPassedValue){
-     const myItem2 = items.get(parseInt(myPassedValue));  // id needs to be an integer
+    function myUpdateMemory(){
+     cont myQuestionNumber  =  document.getElementById('myPresentNumber').value 
+     const myItem2 = items.get(parseInt(myQuestionNumber));  // id needs to be an integer
       if (myItem2) {
         const now = new Date();
         myItem2.myOld = myItem2.start  // store the old time
