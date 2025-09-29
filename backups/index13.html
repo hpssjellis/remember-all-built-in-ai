@@ -151,7 +151,7 @@
     const container = document.getElementById('timeline');
     const tooltip = document.getElementById('custom-tooltip');
     const itemSelectBox = document.getElementById('itemSelectBox');
-
+    let  myLearn = 1.5;    // learning variable
     
     const items = new vis.DataSet([
       {
@@ -404,7 +404,7 @@ function myLoadQuestion(myPassedValue) {
         console.log('myDuration')
         console.log(myDuration)
         
-        const NextDateTime = myOldDateTime + now
+        const NextDateTime = now +  myDuration * myLearn
         console.log('NextDateTime')
         console.log(NextDateTime)
 
