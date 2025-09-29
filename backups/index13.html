@@ -385,14 +385,18 @@ function myLoadQuestion(myPassedValue) {
      const myQuestionNumber  =  document.getElementById('myPresentNumber').value 
      const myItem2 = items.get(parseInt(myQuestionNumber));  // id needs to be an integer
       if (myItem2) {
+
+       console.log(myQuestionNumber)
+       console.log(myQuestionNumber)
+        
         console.log('myItem2')
         console.log(myItem2)
         const now = new Date();
         console.log('now')
         console.log(now)
-        console.log('myItem2.date')
-        console.log(myItem2.date)
-        const myOldDateTime = isoToMillis(myItem2.date)
+        console.log('myItem2.start')
+        console.log(myItem2.start)
+        const myOldDateTime = isoToMillis(myItem2.start)
         console.log('myOldDateTime')
         console.log(myOldDateTime)
         
