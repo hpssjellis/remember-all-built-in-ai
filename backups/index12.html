@@ -324,6 +324,9 @@
         myCheckButton.disabled = false;
         myCheckButton.style.backgroundColor = '#4CAF50';
       }
+      myUpdateMemory();
+
+      
     }
 
     function myCopyFlagsLink() {
@@ -369,6 +372,12 @@ function myLoadQuestion(myPassedValue) {
     console.warn('Item not found with ID:', myPassedValue);
   }
 }
+
+
+    function myUpdateMemory(){
+        alert('hi');
+      
+    }
     
     // fill select  box with items
     populateSelectBox()
