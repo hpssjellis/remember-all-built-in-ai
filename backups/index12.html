@@ -158,18 +158,21 @@
         content: 'Cookie',
         start: '2025-09-29T10:00:00',
         longDescription: 'chocolat, butter, granola, peanut butter, cooked',
+        myOld: '2025-09-29T10:00:00',
       },
       {
         id: 2,
         content: 'DNA',
         start: '2025-09-29T14:00:00',
         longDescription: 'Genetic code that is the base for life',
+        myOld:'2025-09-29T14:00:00',
       },
       {
         id: 3,
         content: '3+7',
         start: '2025-09-30T09:00:00',
         longDescription: '10',
+        myOld:'2025-09-30T09:00:00',
       },
     ]);
 
@@ -227,6 +230,7 @@
       const content = entryContentInput.value.trim();
       const longDescription = entryLongDescriptionInput.value.trim();
       const dateTimeLocal = entryDateInput.value;
+      const myOldTime = entryDateInput.value;
 
       if (!content) {
         alert('Please enter content.');
@@ -249,6 +253,7 @@
         content,
         start: isoString,
         longDescription,
+        myOldTime,
       });
 
       autofillNextEntry();
@@ -374,9 +379,17 @@ function myLoadQuestion(myPassedValue) {
 }
 
 
-    function myUpdateMemory(){
-        alert('hi');
-      
+    function myUpdateMemory(myPassedValue){
+     const myItem2 = items.get(parseInt(myPassedValue));  // id needs to be an integer
+      if (myItem2) {
+        const now = new Date();
+        myItem2.myOld = myItem2.start  // store the old time
+        myItem2.start = now.toISOString(); // update start time to current time
+        items.update(myItem2); // update the dataset
+       // alert('Item 2 time updated to now.');
+      } else {
+        alert('Item 2 not found.');
+      }
     }
     
     // fill select  box with items
