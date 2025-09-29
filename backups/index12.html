@@ -231,7 +231,7 @@
       const content = entryContentInput.value.trim();
       const longDescription = entryLongDescriptionInput.value.trim();
       const dateTimeLocal = entryDateInput.value;
-      const myOldTime = entryDateInput.value;
+      const myOld = entryDateInput.value;
 
       if (!content) {
         alert('Please enter content.');
@@ -254,7 +254,7 @@
         content,
         start: isoString,
         longDescription,
-        myOldTime,
+        myOld,
       });
 
       autofillNextEntry();
