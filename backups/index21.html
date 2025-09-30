@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spaced Repetition Timeline with Adaptive Factors</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Vis.js Timeline Assets -->
+  <script src="https://unpkg.com/vis-timeline@7.7.1/standalone/umd/vis-timeline-graph2d.min.js"></script>
+  <link
+    href="https://unpkg.com/vis-timeline@7.7.1/styles/vis-timeline-graph2d.min.css"
+    rel="stylesheet"
+    type="text/css"
+  />
+  <!-- Minimal inline CSS for basic layout/functionality -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.4;
+    }
+
+    #timeline {
+      width: 95%;
+      height: 300px; /* Default height */
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+
+    #myCustomTooltip {
+      position: absolute;
+      display: none;
+      max-width: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      z-index: 1000;
+      white-space: normal;
+      pointer-events: none;
+      font-size: 14px;
+    }
+
+    .factor-box {
+        display: flex;
+        gap: 20px;
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+    
+    .data-management-buttons button {
+        margin: 4px;
+        padding: 6px 10px;
+        border: 1px solid #007bff;
+        background-color: #e9f7ff;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .data-management-buttons button:hover {
+        background-color: #d0e8ff;
+    }
+
+    /* Red button for clear */
+    .data-management-buttons button.danger {
+        border-color: #dc3545;
+        background-color: #f8d7da;
+    }
+
+    /* Green button for save/import */
+    .data-management-buttons button.primary {
+        border-color: #28a745;
+        background-color: #d4edda;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TIMELINE SECTION -->
+  <h2>Vis.js Timeline: Spaced Repetition</h2>
+  
+  <!-- Entry Form -->
+  <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; max-width: 600px;">
+    <h3>Add/Edit Item</h3>
+    <label for="myEntryId" style="display: inline-block; width: 50px;">ID:</label>
+    <input type="number" id="myEntryId" readonly style="width: 60px; margin-right: 20px;" />
+    <label for="myEntryDate" style="display: inline-block; width: 50px;">Date:</label>
+    <input type="datetime-local" id="myEntryDate" style="width: 220px; margin-right: 20px;" /><br /><br />
+
+    <label for="myEntryContent" style="display: block; font-weight: bold;">Content (Hint):</label>
+    <input type="text" id="myEntryContent" style="width: 100%; margin-bottom: 10px;" placeholder="Enter content" />
+
+    <label for="myEntryLongDescription" style="display: block; font-weight: bold;">Long Description (Answer):</label>
+    <textarea id="myEntryLongDescription" rows="4" style="width: 100%; margin-bottom: 10px;" placeholder="Enter long description/correct answer"></textarea>
+
+    <button id="myNextEntryButton" style="margin-right: 10px;" onclick="myAutofillNextEntry()">Next Entry (Clear)</button>
+    <button id="myAddEntryButton" onclick="myAddEntry(); myPopulateSelectBox(); mySaveToLocalStorage();">Add / Update</button>
+  </div>
+  
+  <!-- Height Controls -->
+  <div style="margin-bottom: 10px;">
+      <h4>Timeline Height Controls</h4>
+      <button onclick="mySetTimelineHeight(150)">Small Height (150px)</button>
+      <button onclick="mySetTimelineHeight(300)">Medium Height (300px)</button>
+      <button onclick="mySetTimelineHeight(600)">Large Height (600px)</button>
+  </div>
+
+  <!-- Data Management Controls -->
+  <div style="margin-bottom: 20px;">
+    <h4>Data Management</h4>
+    <div class="data-management-buttons">
+      <!-- These two buttons are now hidden per your request -->
+      <button class="primary" onclick="mySaveToLocalStorage()" style="display: none;">Save to Local Storage</button>
+      <button onclick="myViewRawData()" style="display: none;">View Raw Data</button>
+      
+      <button onclick="myExportJsonFacts()">Export JSON - Facts Only</button>
+      <button onclick="myExportJsonAll()">Export JSON - All Data</button>
+      <button onclick="myExportCsv()">Export CSV</button>
+      <button onclick="myExportXml()">Export XML</button>
+      <button onclick="myPrepareImport()">Import File (.json/.csv)</button>
+      <button class="danger" onclick="myClearAllLocalData()">Clear All Local Data</button>
+    </div>
+  </div>
+
+  <div id="timeline"></div>
+  <div id="myCustomTooltip"></div>
+
+  <!-- --- -->
+
+  <!-- CHROME AI TOOL SECTION -->
+  <hr style="margin: 40px 0;">
+  <div style="font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px;">
+    <h1>Chrome Built-in AI: Statement Comparison Tool</h1>
+    <div class="factor-box" id="myFactorDisplay">
+        <!-- Factor values will be displayed here -->
+    </div>
+    <div style="margin-top: 20px;">
+      <h2>Test Your Memory</h2>
+        
+      <!-- Select Box -->
+      <p>Items due for review (Start Date $\le$ Now):</p>
+      <select id="myQuestionSelectBox" size="1" onchange="myLoadQuestion(this.value);" style="margin-bottom: 10px; width: 100%;">
+        <!-- Options will be populated dynamically -->
+      </select><br>
+
+      Question Hint: <input type="text" id="myHintInput" readonly style="width: 100%; margin-bottom: 10px;"> <br>
+      <input type="hidden" id="myPresentNumber"> <!-- Hidden ID for the selected item -->
+        
+      <!-- Stored statement -->
+      <label for="myStoredStatement">Stored Answer (Should be hidden during test):</label>
+      <textarea id="myStoredStatement" rows="3" placeholder="Stored Answer" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 5px;"></textarea>
+        
+      <label for="myUserTest">Your Recall/Answer:</label>
+      <textarea id="myUserTest" rows="3" placeholder="Enter your remembered statement..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 5px;"></textarea>
+
+      <button id="myCheckButton" onclick="myCheckSimilarity()" style="display: block; width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; color: white; background-color: #4CAF50; border: none; border-radius: 5px; cursor: pointer;">Check Similarity & Update Schedule</button>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h2>Status and Output / Data Input</h2>
+      <!-- Reusing the output area for raw data display/import -->
+      <p id="myStatus" style="font-style: italic; color: #555;">Ready. Select an item and enter your answer.</p>
+      <textarea id="myOutput" rows="10" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #eee; box-sizing: border-box; margin-top: 10px;"></textarea>
+      
+      <button id="myProcessImportButton" style="display: none; margin-top: 5px;" onclick="myProcessImportData()">Process Imported Data</button>
+    </div>
+  </div>
+
+  <!-- --- -->
+  
+  <!-- COMBINED SCRIPTS -->
+  <script>
+    // --- Global Variables & Factors ---
+    const myContainer = document.getElementById('timeline');
+    const myTooltip = document.getElementById('myCustomTooltip');
+    const myQuestionSelectBox = document.getElementById('myQuestionSelectBox');
+    const myStatus = document.getElementById('myStatus');
+    const myOutput = document.getElementById('myOutput');
+    const myProcessImportButton = document.getElementById('myProcessImportButton');
+
+    // Spaced Repetition Learning Factors
+    const myLearn = { value: 1.50 }; 
+    const myForget = { value: 1.50 }; 
+    const myAdjustmentRate = 0.05; 
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    
+    // Default Data Set (used if no data in localStorage)
+    const myDefaultData = [
+      {
+        id: 1,
+        content: 'Cookie Ingredients',
+        start: '2025-09-29T00:00:00.000Z', 
+        longDescription: 'chocolat, butter, granola, peanut butter, cooked', 
+        myOriginalStart: '2025-07-26T10:00:00.000Z', 
+        myCorrectCount: 0, 
+      },
+      {
+        id: 2,
+        content: 'DNA Acronym',
+        start: '2025-09-30T14:00:00.000Z', 
+        longDescription: 'Deoxyribonucleic acid',
+        myOriginalStart: '2025-05-27T14:00:00.000Z',
+        myCorrectCount: 0,
+      }
+    ];
+
+    // Timeline Data Storage (Initialized in myInitializeApp)
+    let myItemsDataSet;
+    let myTimeline;
+
+    // --- Factor Display UI ---
+    function myUpdateFactorDisplay() {
+        const myDisplay = document.getElementById('myFactorDisplay');
+        myDisplay.innerHTML = `
+            <div>
+                <strong>myLearn Factor:</strong> 
+                <span style="color: green; font-weight: bold;">${myLearn.value.toFixed(2)}</span> 
+                (Success Multiplier)
+            </div>
+            <div>
+                <strong>myForget Factor:</strong> 
+                <span style="color: red; font-weight: bold;">${myForget.value.toFixed(2)}</span> 
+                (Failure Divisor)
+            </div>
+        `;
+    }
+    
+    // --- Data Persistence and Initialization ---
+
+    function myLoadFromLocalStorage() {
+        try {
+            const myStoredData = localStorage.getItem('myTimelineData');
+            const myStoredFactors = localStorage.getItem('mySRSFactors');
+            
+            if (myStoredFactors) {
+                const factors = JSON.parse(myStoredFactors);
+                myLearn.value = factors.learn || 1.50;
+                myForget.value = factors.forget || 1.50;
+            }
+
+            if (myStoredData) {
+                myStatus.textContent = "Data loaded from Local Storage.";
+                return JSON.parse(myStoredData);
+            }
+            myStatus.textContent = "No stored data found. Using default data.";
+            return myDefaultData;
+        } catch (myError) {
+            console.error("Error loading data from local storage:", myError);
+            myStatus.textContent = "Error loading data. Using default data.";
+            return myDefaultData;
+        }
+    }
+
+    function mySaveToLocalStorage() {
+        try {
+            const myDataToSave = myItemsDataSet.get();
+            localStorage.setItem('myTimelineData', JSON.stringify(myDataToSave));
+            localStorage.setItem('mySRSFactors', JSON.stringify({ learn: myLearn.value, forget: myForget.value }));
+            myStatus.textContent = `Data and factors saved to Local Storage (${myDataToSave.length} items).`;
+        } catch (myError) {
+            console.error("Error saving data to local storage:", myError);
+            myStatus.textContent = "Error saving data. Check console.";
+        }
+    }
+
+    function myInitializeApp() {
+        const myInitialData = myLoadFromLocalStorage();
+        
+        myItemsDataSet = new vis.DataSet(myInitialData);
+        
+        myTimeline = new vis.Timeline(myContainer, myItemsDataSet, {
+            type: 'box',
+            tooltip: { followMouse: false },
+            autoResize: true, 
+        });
+
+        myTimeline.on('itemover', myTimelineItemOver);
+        myTimeline.on('itemout', myTimelineItemOut);
+        myTimeline.on('doubleClick', myTimelineDoubleClick);
+        myTimeline.on('click', myTimelineClick);
+
+        myUpdateFactorDisplay();
+        myAutofillNextEntry();
+        myPopulateSelectBox();
+        mySetTimelineHeight(300); // Set default height
+    }
+
+    // --- Timeline Height Resizing Function (Method 2) ---
+    function mySetTimelineHeight(myNewHeight) {
+      myContainer.style.height = myNewHeight + 'px'; 
+      myTimeline.setOptions({ 
+          height: myNewHeight + 'px' 
+      }); 
+    }
+
+    // --- Timeline Interaction Logic Handlers ---
+    
+    function myTimelineItemOver(props) {
+      const myItem = myItemsDataSet.get(props.item);
+      if (myItem) {
+        const myOriginalTime = new Date(myItem.myOriginalStart).toLocaleDateString();
+        myTooltip.innerHTML = 
+          `**Hint:** ${myItem.content}<br>` + 
+          `**Original Date:** ${myOriginalTime}<br>` +
+          `**Correct Count:** ${myItem.myCorrectCount}`;
+        myTooltip.style.display = 'block';
+      }
+    }
+
+    function myTimelineItemOut() {
+      myTooltip.style.display = 'none';
+    }
+
+    myContainer.addEventListener('mousemove', function (myEvent) {
+      myTooltip.style.left = myEvent.pageX + 10 + 'px';
+      myTooltip.style.top = myEvent.pageY + 10 + 'px';
+    });
+
+    function myTimelineDoubleClick(props) {
+      const myItem = myItemsDataSet.get(props.item);
+      if (myItem && myItem.longDescription) {
+        myTooltip.innerHTML = `**ANSWER:**<br>${myItem.longDescription.replace(/\n/g, '<br>')}`;
+        myTooltip.style.display = 'block';
+        setTimeout(() => { myTooltip.style.display = 'none'; }, 3000);
+      }
+    }
+    
+    function myTimelineClick(props) {
+      if (props.item !== null) {
+          myLoadItemForEdit(props.item);
+      }
+    }
+
+    // --- Entry Form / Data Management Functions (Continued) ---
+    const myEntryIdInput = document.getElementById('myEntryId');
+    const myEntryDateInput = document.getElementById('myEntryDate');
+    const myEntryContentInput = document.getElementById('myEntryContent');
+    const myEntryLongDescriptionInput = document.getElementById('myEntryLongDescription');
+    
+    function myLoadItemForEdit(myId) {
+        const myItem = myItemsDataSet.get(parseInt(myId));
+        if (myItem) {
+            myEntryIdInput.value = myItem.id;
+            myEntryDateInput.value = myIsoToLocalDateTime(myItem.start); 
+            myEntryContentInput.value = myItem.content;
+            myEntryLongDescriptionInput.value = myItem.longDescription;
+        }
+    }
+
+    function myGetNextId() {
+      const myAllIds = myItemsDataSet.getIds();
+      return myAllIds.length ? Math.max(...myAllIds) + 1 : 1;
+    }
+
+    function myGetCurrentDateTimeLocal() {
+      const now = new Date();
+      now.setSeconds(0, 0);
+      const myOffset = now.getTimezoneOffset();
+      const myLocalDate = new Date(now.getTime() - myOffset * 60000); 
+      return myLocalDate.toISOString().slice(0, 16);
+    }
+
+    function myAutofillNextEntry() {
+      myEntryIdInput.value = myGetNextId();
+      myEntryDateInput.value = myGetCurrentDateTimeLocal();
+      myEntryContentInput.value = '';
+      myEntryLongDescriptionInput.value = '';
+    }
+
+    function myAddEntry() {
+      const myId = Number(myEntryIdInput.value);
+      const myContent = myEntryContentInput.value.trim();
+      const myLongDescription = myEntryLongDescriptionInput.value.trim();
+      const myDateTimeLocal = myEntryDateInput.value;
+
+      if (!myContent || !myLongDescription) {
+        myStatus.textContent = 'Error: Please enter both Content (Hint) and Long Description (Answer).';
+        return;
+      }
+      if (!myDateTimeLocal) {
+        myStatus.textContent = 'Error: Please enter a valid date and time.';
+        return;
+      }
+
+      const myIsoString = new Date(myDateTimeLocal).toISOString();
+      const myExistingItem = myItemsDataSet.get(myId);
+
+      if (myExistingItem) {
+        myExistingItem.content = myContent;
+        myExistingItem.longDescription = myLongDescription;
+        myExistingItem.start = myIsoString; 
+        myItemsDataSet.update(myExistingItem);
+        myStatus.textContent = `Item ${myId} updated!`;
+      } else {
+        myItemsDataSet.add({
+          id: myId,
+          content: myContent,
+          start: myIsoString,
+          longDescription: myLongDescription,
+          myOriginalStart: myIsoString, 
+          myCorrectCount: 0, 
+        });
+        myStatus.textContent = `New Item ${myId} added!`;
+      }
+
+      myAutofillNextEntry();
+    }
+    
+    // --- Data Export Functions ---
+    
+    function myDownloadFile(myContent, myFileName, myMimeType) {
+        const myBlob = new Blob([myContent], { type: myMimeType });
+        const myUrl = URL.createObjectURL(myBlob);
+        const myA = document.createElement('a');
+        myA.href = myUrl;
+        myA.download = myFileName;
+        document.body.appendChild(myA);
+        myA.click();
+        document.body.removeChild(myA);
+        URL.revokeObjectURL(myUrl);
+        myStatus.textContent = `Successfully exported data to ${myFileName}.`;
+    }
+
+    function myExportJsonFacts() {
+        const myAllItems = myItemsDataSet.get();
+        const myFacts = myAllItems.map(item => ({
+            id: item.id,
+            content: item.content,
+            longDescription: item.longDescription
+        }));
+        const myJsonString = JSON.stringify(myFacts, null, 2);
+        myDownloadFile(myJsonString, 'facts_only.json', 'application/json');
+    }
+
+    function myExportJsonAll() {
+        const myAllItems = myItemsDataSet.get();
+        const myJsonString = JSON.stringify(myAllItems, null, 2);
+        myDownloadFile(myJsonString, 'all_data.json', 'application/json');
+    }
+
+    function myExportCsv() {
+        const myAllItems = myItemsDataSet.get();
+        if (myAllItems.length === 0) {
+            myStatus.textContent = "No data to export to CSV.";
+            return;
+        }
+
+        const myHeaders = ["id", "content", "longDescription", "start", "myOriginalStart", "myCorrectCount"];
+        let myCsv = myHeaders.join(',') + '\n';
+
+        myAllItems.forEach(item => {
+            const myRow = myHeaders.map(header => {
+                let value = item[header] || "";
+                if (typeof value === 'string') {
+                    // Escape double quotes and enclose in double quotes
+                    value = `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            myCsv += myRow.join(',') + '\n';
+        });
+
+        myDownloadFile(myCsv, 'data_export.csv', 'text/csv');
+    }
+
+    function myExportXml() {
+        const myAllItems = myItemsDataSet.get();
+        let myXml = '<?xml version="1.0" encoding="UTF-8"?>\n<facts>\n';
+
+        myAllItems.forEach(item => {
+            myXml += `  <item id="${item.id}" correct-count="${item.myCorrectCount}">\n`;
+            myXml += `    <content>${item.content}</content>\n`;
+            myXml += `    <long-description>${item.longDescription}</long-description>\n`;
+            myXml += `    <start>${item.start}</start>\n`;
+            myXml += `    <original-start>${item.myOriginalStart}</original-start>\n`;
+            myXml += `  </item>\n`;
+        });
+
+        myXml += '</facts>';
+        myDownloadFile(myXml, 'data_export.xml', 'application/xml');
+    }
+
+    // --- Data View/Import Functions ---
+
+    function myViewRawData() {
+        myOutput.readOnly = true;
+        myProcessImportButton.style.display = 'none';
+        const myAllItems = myItemsDataSet.get();
+        myOutput.value = JSON.stringify(myAllItems, null, 2);
+        myStatus.textContent = "Current data displayed below (JSON format).";
+    }
+
+    function myPrepareImport() {
+        myOutput.readOnly = false;
+        myOutput.style.backgroundColor = '#fff';
+        myOutput.value = "Paste JSON or CSV data here and click 'Process Imported Data'. JSON is preferred for full data import.";
+        myProcessImportButton.style.display = 'block';
+        myStatus.textContent = "Ready to import data. Please paste content below.";
+    }
+
+    function myProcessImportData() {
+        const myDataString = myOutput.value.trim();
+        if (!myDataString) {
+            myStatus.textContent = "Error: Paste data into the box before processing.";
+            return;
+        }
+
+        let myParsedData;
+        try {
+            // Attempt JSON parsing first
+            myParsedData = JSON.parse(myDataString);
+            if (!Array.isArray(myParsedData)) throw new Error("JSON is not an array.");
+        } catch (jsonError) {
+            // Simple attempt at CSV parsing (not robust for all CSV formats)
+            try {
+                const myLines = myDataString.split('\n');
+                const myHeaders = myLines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                myParsedData = myLines.slice(1).map(line => {
+                    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Simple quote-aware split
+                    const myItem = {};
+                    myHeaders.forEach((header, i) => {
+                        let val = values[i] ? values[i].trim().replace(/^"|"$/g, '').replace(/""/g, '"') : '';
+                        if (header === 'id' || header === 'myCorrectCount') {
+                            myItem[header] = parseInt(val) || 0;
+                        } else {
+                            myItem[header] = val;
+                        }
+                    });
+                    return myItem;
+                }).filter(item => item.id);
+            } catch (csvError) {
+                myStatus.textContent = "Error: Data could not be parsed as valid JSON or simple CSV.";
+                console.error("JSON Error:", jsonError);
+                console.error("CSV Error:", csvError);
+                return;
+            }
+        }
+
+        // Final check and update
+        if (myParsedData && myParsedData.length > 0) {
+            myItemsDataSet.clear();
+            myItemsDataSet.add(myParsedData);
+            mySaveToLocalStorage(); // Save imported data immediately
+            myPopulateSelectBox(); // Refresh item list
+            myAutofillNextEntry(); // Update the next ID counter
+            myStatus.textContent = `Successfully imported and saved ${myParsedData.length} items!`;
+        } else {
+            myStatus.textContent = "Error: Imported data array is empty or invalid.";
+        }
+        
+        myOutput.readOnly = true;
+        myOutput.style.backgroundColor = '#eee';
+        myProcessImportButton.style.display = 'none';
+    }
+
+
+    function myClearAllLocalData() {
+        // Confirmation is needed before wiping data!
+        if (confirm("Are you sure you want to clear ALL data (including Local Storage)? This cannot be undone.")) {
+            myItemsDataSet.clear();
+            localStorage.removeItem('myTimelineData');
+            localStorage.removeItem('mySRSFactors');
+            myLearn.value = 1.50;
+            myForget.value = 1.50;
+            myUpdateFactorDisplay();
+            myPopulateSelectBox();
+            myAutofillNextEntry();
+            myStatus.textContent = "All data cleared from tool and Local Storage. Defaults restored.";
+        }
+    }
+
+    // --- Select Box / Question Loading Functions ---
+
+    function myPopulateSelectBox() {
+      const myAllItems = myItemsDataSet.get();
+      myQuestionSelectBox.innerHTML = ''; 
+      
+      const myNow = new Date(); 
+
+      const myDueItems = myAllItems.filter(myItem => new Date(myItem.start) <= myNow);
+
+      const myDefaultOption = document.createElement('option');
+      myDefaultOption.textContent = myDueItems.length > 0 ? 'Select a DUE Question to Test' : 'No items due yet!';
+      myDefaultOption.value = '';
+      myQuestionSelectBox.appendChild(myDefaultOption);
+
+      if (myDueItems.length === 0) {
+        myLoadQuestion(null); 
+        return;
+      }
+
+      myDueItems.forEach(myItem => {
+        const myOption = document.createElement('option');
+        myOption.value = myItem.id;
+        myOption.textContent = `#${myItem.id} - ${myItem.content}`;
+        myQuestionSelectBox.appendChild(myOption);
+      });
+      
+      if (myDueItems.length > 0) {
+          myQuestionSelectBox.value = myDueItems[0].id;
+          myLoadQuestion(myDueItems[0].id);
+      }
+    }
+
+    function myLoadQuestion(myId) {
+      if (!myId) {
+          document.getElementById('myStoredStatement').value = '';
+          document.getElementById('myHintInput').value = '';
+          document.getElementById('myUserTest').value = '';
+          document.getElementById('myPresentNumber').value = '';
+          return;
+      }
+      
+      const myItem = myItemsDataSet.get(parseInt(myId)); 
+      
+      if (myItem) {
+        document.getElementById('myStoredStatement').value = myItem.longDescription || '';
+        document.getElementById('myHintInput').value = myItem.content || '';
+        document.getElementById('myUserTest').value = '';
+        document.getElementById('myPresentNumber').value = myId;
+      } else {
+        console.warn('Item not found with ID:', myId);
+      }
+    }
+    
+    // --- Date Utility Functions ---
+
+    function myIsoToMillis(myIsoString) { return new Date(myIsoString).getTime(); }
+    function myMillisToIso(myMillis) { return new Date(myMillis).toISOString(); }
+    
+    function myIsoToLocalDateTime(myIsoString) {
+      const myDate = new Date(myIsoString);
+      const myOffset = myDate.getTimezoneOffset() * 60000; 
+      const myLocalTime = new Date(myDate.getTime() - myOffset);
+      return myLocalTime.toISOString().slice(0, 16);
+    }
+    
+    // --- LLM Status / Timer Functions ---
+    
+    let myLanguageModelSession = null;
+    let myTimerInterval = null;
+    const myCheckButton = document.getElementById('myCheckButton');
+    const myLlmOutput = document.getElementById('myOutput'); // Renamed local var to avoid conflict
+
+    function myStartTimer() {
+      let mySeconds = 0;
+      myStatus.textContent = "Working... 0s";
+      myTimerInterval = setInterval(() => {
+        mySeconds++;
+        myStatus.textContent = `Working... ${mySeconds}s`;
+      }, 1000);
+    }
+
+    function myStopTimer(myMessage) {
+      if (myTimerInterval) {
+        clearInterval(myTimerInterval);
+        myTimerInterval = null;
+      }
+      myStatus.textContent = myMessage;
+    }
+
+    // --- LLM & Spaced Repetition Logic ---
+
+    function myUpdateMemory(myQuestionId, myLastScheduledReviewTimeIso, myIsCorrect) {
+        
+        const myItemToUpdate = myItemsDataSet.get(parseInt(myQuestionId));
+        if (!myItemToUpdate) {
+            console.error('Item not found for update:', myQuestionId);
+            return;
+        }
+
+        const myNow = Date.now();
+        const myLastScheduledReviewTime = myIsoToMillis(myLastScheduledReviewTimeIso); 
+        
+        const myTimeDifference = myNow - myLastScheduledReviewTime; 
+        const myPrevInterval = myTimeDifference + (myNow - myLastScheduledReviewTime); // Crude interval estimate
+        const myDuration = Math.max(myPrevInterval, ONE_DAY_MS); 
+        
+        let myNextDateTime;
+        let myMessage;
+        let myAdjustmentMessage = '';
+        
+        const myMaxFactor = 3.0; 
+        const myMinFactor = 1.1; 
+
+        if (myIsCorrect) {
+            // --- SUCCESSFUL TEST LOGIC ---
+            
+            const myNewInterval = myDuration * myLearn.value;
+            myNextDateTime = myNow + myNewInterval;
+            myItemToUpdate.myCorrectCount++; 
+            myMessage = `schedule updated! Correct count: ${myItemToUpdate.myCorrectCount}.`;
+            
+            if (myTimeDifference > ONE_DAY_MS * 2) { 
+                myLearn.value = Math.min(myLearn.value + myAdjustmentRate, myMaxFactor);
+                myAdjustmentMessage = 'myLearn factor increased (tested very late & correct).';
+            } else if (myTimeDifference < -ONE_DAY_MS * 0.5) {
+                myLearn.value = Math.max(myLearn.value - (myAdjustmentRate / 2), myMinFactor);
+                myAdjustmentMessage = 'myLearn factor slightly decreased (tested early & correct).';
+            } else {
+                myAdjustmentMessage = 'myLearn factor stable.';
+            }
+
+        } else {
+            // --- FAILED TEST LOGIC ---
+            
+            const myEffectiveDuration = Math.max(myDuration, 60000); 
+            const myNewInterval = myEffectiveDuration / myForget.value; 
+            myNextDateTime = myNow + myNewInterval;
+            myMessage = `schedule penalized!`;
+            myItemToUpdate.myCorrectCount = 0; 
+
+            const myAbsoluteTimeDiff = Math.abs(myTimeDifference);
+
+            if (myAbsoluteTimeDiff < ONE_DAY_MS) {
+                myForget.value = Math.min(myForget.value + myAdjustmentRate, myMaxFactor); 
+                myAdjustmentMessage = 'myForget factor increased (failed on time).';
+            } else if (myTimeDifference > ONE_DAY_MS * 3) {
+                myForget.value = Math.max(myForget.value - (myAdjustmentRate / 2), myMinFactor); 
+                myAdjustmentMessage = 'myForget factor slightly decreased (failed very late).';
+            } else {
+                myAdjustmentMessage = 'myForget factor stable.';
+            }
+        }
+        
+        const myNewIsoStart = myMillisToIso(myNextDateTime);
+        myItemToUpdate.start = myNewIsoStart; 
+        
+        myItemsDataSet.update(myItemToUpdate);
+        myUpdateFactorDisplay(); 
+        mySaveToLocalStorage(); // Save after every update
+        
+        myStatus.textContent += ` Item #${myQuestionId} ${myMessage} ${myAdjustmentMessage} Next review: ${new Date(myNextDateTime).toLocaleString()}.`;
+    }
+
+    async function myCheckSimilarity() {
+      const myStoredStatement = document.getElementById('myStoredStatement');
+      const myUserTest = document.getElementById('myUserTest');
+      const myPresentNumberInput = document.getElementById('myPresentNumber');
+      
+      const myQuestionId = myPresentNumberInput.value;
+      if (!myQuestionId) {
+          myStopTimer('Please select an item to test first.');
+          return;
+      }
+      
+      const myItem = myItemsDataSet.get(parseInt(myQuestionId));
+      if (!myItem) {
+          myStopTimer('Error: Selected item not found.');
+          return;
+      }
+
+      myCheckButton.disabled = true;
+      myCheckButton.style.backgroundColor = '#ccc';
+      myLlmOutput.value = ""; // Clear LLM output area
+
+      try {
+        if (!('LanguageModel' in window)) {
+          myStopTimer("Error: LanguageModel API not available. Check Chrome flags.");
+          return;
+        }
+
+        myStartTimer();
+
+        if (!myLanguageModelSession) {
+          myStatus.textContent = 'Creating AI session...';
+          myLanguageModelSession = await LanguageModel.create();
+          myStatus.textContent = 'Session created. Sending prompt...';
+        }
+
+        const myStoredValue = myStoredStatement.value.trim();
+        const myUserValue = myUserTest.value.trim();
+
+        if (!myStoredValue || !myUserValue) {
+          myStopTimer('Please fill in both Your Recall/Answer and ensure a question is loaded.');
+          return;
+        }
+        
+        const myPrompt = `Compare the meaning of the following two statements and determine if they express the same general idea. Ignore differences in letter casing (e.g., uppercase vs lowercase). Only respond with one word: "same" if they mean the same thing, or "different" if they do not. Do not explain your answer.\nStatement 1: ${myStoredValue}\nStatement 2: ${myUserValue}`;
+
+        const myResponse = await myLanguageModelSession.prompt(myPrompt, {
+            outputLanguage: 'en' 
+        });
+        
+        const myResult = myResponse.trim().toLowerCase();
+        const myIsSame = myResult === 'same';
+        
+        myLlmOutput.value = myIsSame ? '✅ Same (Correct)' : '❌ Different (Incorrect)';
+        myStopTimer(`Comparison complete! Result: ${myIsSame ? 'Correct' : 'Incorrect'}`);
+        
+        myUpdateMemory(myQuestionId, myItem.start, myIsSame);
+
+      } catch (myError) {
+        myStopTimer("An error occurred. Check the console for details.");
+        console.error("Error:", myError);
+      } finally {
+        myCheckButton.disabled = false;
+        myCheckButton.style.backgroundColor = '#4CAF50';
+        myPopulateSelectBox(); 
+      }
+    }
+
+    // --- Initialization on Load ---
+    window.onload = myInitializeApp;
+  </script>
+
+</body>
+</html>
