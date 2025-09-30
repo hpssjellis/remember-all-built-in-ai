@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Merged: Timeline + Chrome AI Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://unpkg.com/vis-timeline@7.7.1/standalone/umd/vis-timeline-graph2d.min.js"></script>
+  <link
+    href="https://unpkg.com/vis-timeline@7.7.1/styles/vis-timeline-graph2d.min.css"
+    rel="stylesheet"
+    type="text/css"
+  />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    #timeline {
+      width: 95%;
+      height: 300px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+
+    #myCustomTooltip {
+      position: absolute;
+      display: none;
+      max-width: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      z-index: 1000;
+      white-space: normal;
+      pointer-events: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Vis.js Timeline: Spaced Repetition</h2>
+  <p>Single-click an item to **load it for editing** in the form above. Double-click to **show the full answer** (Long Description).</p>
+
+  <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; max-width: 600px;">
+    <h3>Add/Edit Item</h3>
+    <label for="myEntryId" style="display: inline-block; width: 50px;">ID:</label>
+    <input type="number" id="myEntryId" readonly style="width: 60px; margin-right: 20px;" />
+    <label for="myEntryDate" style="display: inline-block; width: 50px;">Date:</label>
+    <input type="datetime-local" id="myEntryDate" style="width: 220px; margin-right: 20px;" /><br /><br />
+
+    <label for="myEntryContent" style="display: block; font-weight: bold;">Content (Hint):</label>
+    <input type="text" id="myEntryContent" style="width: 100%; margin-bottom: 10px;" placeholder="Enter content" />
+
+    <label for="myEntryLongDescription" style="display: block; font-weight: bold;">Long Description (Answer):</label>
+    <textarea id="myEntryLongDescription" rows="4" style="width: 100%; margin-bottom: 10px;" placeholder="Enter long description/correct answer"></textarea>
+
+    <button id="myNextEntryButton" style="margin-right: 10px;" onclick="myAutofillNextEntry()">Next Entry (Clear)</button>
+    <button id="myAddEntryButton" onclick="myAddEntry(); myPopulateSelectBox();">Add / Update</button>
+  </div>
+
+  <div id="timeline"></div>
+  <div id="myCustomTooltip"></div>
+
+  <hr style="margin: 40px 0;">
+  <div style="font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px;">
+    <h1>Chrome Built-in AI: Statement Comparison Tool</h1>
+    <div style="margin-top: 20px;">
+      <h2>Test Your Memory</h2>
+        
+      <select id="myQuestionSelectBox" size="1" onchange="myLoadQuestion(this.value);" style="margin-bottom: 10px;">
+        </select><br>
+
+      Question Hint: <input type="text" id="myHintInput" readonly style="width: 100%; margin-bottom: 10px;"> <br>
+      <input type="hidden" id="myPresentNumber"> <label for="myStoredStatement">Stored Answer (Should be hidden during test):</label>
+      <textarea id="myStoredStatement" rows="3" placeholder="Stored Answer" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 5px;"></textarea>
+        
+      <label for="myUserTest">Your Recall/Answer:</label>
+      <textarea id="myUserTest" rows="3" placeholder="Enter your remembered statement..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 5px;"></textarea>
+
+      <button id="myCheckButton" onclick="myCheckSimilarity()" style="display: block; width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; color: white; background-color: #4CAF50; border: none; border-radius: 5px; cursor: pointer;">Check Similarity & Update Schedule</button>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h2>Status and Output</h2>
+      <p id="myStatus" style="font-style: italic; color: #555;">Ready. Select an item and enter your answer.</p>
+      <textarea id="myOutput" rows="3" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #eee; box-sizing: border-box; margin-top: 10px;"></textarea>
+    </div>
+  </div>
+
+  <script>
+    // --- Global Variables ---
+    const myContainer = document.getElementById('timeline');
+    const myTooltip = document.getElementById('myCustomTooltip');
+    const myQuestionSelectBox = document.getElementById('myQuestionSelectBox');
+    
+    // Spaced Repetition Learning Factor (e.g., F-factor in SuperMemo)
+    let myLearnFactor = 1.5; 
+    
+    // Timeline Data Storage
+    const myItemsDataSet = new vis.DataSet([
+      {
+        id: 1,
+        content: 'Cookie',
+        start: '2025-07-26T10:00:00.000Z', // Next review date
+        longDescription: 'chocolat, butter, granola, peanut butter, cooked', // Stored Answer
+        myOriginalStart: '2025-07-26T10:00:00.000Z', // Original creation date (NEVER CHANGES)
+        myCorrectCount: 0, // Number of times recalled correctly
+      },
+      {
+        id: 2,
+        content: 'DNA',
+        start: '2025-05-27T14:00:00.000Z',
+        longDescription: 'Genetic code that is the base for life',
+        myOriginalStart: '2025-05-27T14:00:00.000Z',
+        myCorrectCount: 0,
+      },
+      {
+        id: 3,
+        content: '3+7',
+        start: '2025-01-28T09:00:00.000Z',
+        longDescription: '10',
+        myOriginalStart: '2025-01-28T09:00:00.000Z',
+        myCorrectCount: 0,
+      },
+    ]);
+
+    // Vis.js Timeline Setup
+    const myTimeline = new vis.Timeline(myContainer, myItemsDataSet, {
+      type: 'box',
+      tooltip: {
+        followMouse: false,
+      },
+    });
+
+    // --- Timeline Interaction Logic ---
+    
+    // Mouseover: Shows basic info (Hint, Original Date, Correct Count)
+    myTimeline.on('itemover', function (props) {
+      const myItem = myItemsDataSet.get(props.item);
+      if (myItem) {
+        const myOriginalTime = new Date(myItem.myOriginalStart).toLocaleDateString();
+        myTooltip.innerHTML = 
+          `**Hint:** ${myItem.content}<br>` + 
+          `**Original Date:** ${myOriginalTime}<br>` +
+          `**Correct Count:** ${myItem.myCorrectCount}`;
+        myTooltip.style.display = 'block';
+      }
+    });
+
+    myTimeline.on('itemout', function () {
+      myTooltip.style.display = 'none';
+    });
+
+    myContainer.addEventListener('mousemove', function (myEvent) {
+      myTooltip.style.left = myEvent.pageX + 10 + 'px';
+      myTooltip.style.top = myEvent.pageY + 10 + 'px';
+    });
+
+    // Double Click: Shows the full answer (Long Description)
+    myTimeline.on('doubleClick', function (props) {
+      const myItem = myItemsDataSet.get(props.item);
+      if (myItem && myItem.longDescription) {
+        myTooltip.innerHTML = `**ANSWER:**<br>${myItem.longDescription.replace(/\n/g, '<br>')}`;
+        myTooltip.style.display = 'block';
+        // Hide the tooltip after 3 seconds
+        setTimeout(() => {
+          myTooltip.style.display = 'none';
+        }, 3000);
+      }
+    });
+    
+    // Click: Loads item data into the entry form for editing
+    myTimeline.on('click', function (props) {
+      if (props.item !== null) {
+          myLoadItemForEdit(props.item);
+      }
+    });
+
+    // --- Entry Form / Data Management Functions ---
+    const myEntryIdInput = document.getElementById('myEntryId');
+    const myEntryDateInput = document.getElementById('myEntryDate');
+    const myEntryContentInput = document.getElementById('myEntryContent');
+    const myEntryLongDescriptionInput = document.getElementById('myEntryLongDescription');
+    
+    // Loads an item's data into the entry form for editing
+    function myLoadItemForEdit(myId) {
+        const myItem = myItemsDataSet.get(parseInt(myId));
+        if (myItem) {
+            myEntryIdInput.value = myItem.id;
+            // Convert ISO start date back to local datetime format for input field
+            myEntryDateInput.value = myIsoToLocalDateTime(myItem.start); 
+            myEntryContentInput.value = myItem.content;
+            myEntryLongDescriptionInput.value = myItem.longDescription;
+        }
+    }
+
+    function myGetNextId() {
+      const myAllIds = myItemsDataSet.getIds();
+      return myAllIds.length ? Math.max(...myAllIds) + 1 : 1;
+    }
+
+    function myGetCurrentDateTimeLocal() {
+      const now = new Date();
+      now.setSeconds(0, 0);
+      const myOffset = now.getTimezoneOffset();
+      // Adjust to local time string format for datetime-local input
+      const myLocalDate = new Date(now.getTime() - myOffset * 60000); 
+      return myLocalDate.toISOString().slice(0, 16);
+    }
+
+    function myAutofillNextEntry() {
+      myEntryIdInput.value = myGetNextId();
+      myEntryDateInput.value = myGetCurrentDateTimeLocal();
+      myEntryContentInput.value = '';
+      myEntryLongDescriptionInput.value = '';
+    }
+
+    function myAddEntry() {
+      const myId = Number(myEntryIdInput.value);
+      const myContent = myEntryContentInput.value.trim();
+      const myLongDescription = myEntryLongDescriptionInput.value.trim();
+      const myDateTimeLocal = myEntryDateInput.value;
+
+      if (!myContent || !myLongDescription) {
+        alert('Please enter both Content (Hint) and Long Description (Answer).');
+        return;
+      }
+      if (!myDateTimeLocal) {
+        alert('Please enter a valid date and time.');
+        return;
+      }
+
+      const myIsoString = new Date(myDateTimeLocal).toISOString();
+      const myExistingItem = myItemsDataSet.get(myId);
+
+      if (myExistingItem) {
+        // --- UPDATE EXISTING ITEM ---
+        myExistingItem.content = myContent;
+        myExistingItem.longDescription = myLongDescription;
+        myExistingItem.start = myIsoString; // Allows editing the next review date
+        // myOriginalStart and myCorrectCount are NOT changed here
+        myItemsDataSet.update(myExistingItem);
+        alert(`Item ${myId} updated!`);
+      } else {
+        // --- ADD NEW ITEM ---
+        myItemsDataSet.add({
+          id: myId,
+          content: myContent,
+          start: myIsoString,
+          longDescription: myLongDescription,
+          myOriginalStart: myIsoString, // Set the fixed original date
+          myCorrectCount: 0, 
+        });
+        alert(`New Item ${myId} added!`);
+      }
+
+
+      myAutofillNextEntry();
+    }
+
+    myAutofillNextEntry();
+    
+    // --- Select Box / Question Loading Functions ---
+
+    // Populate the select box with item IDs and content
+    function myPopulateSelectBox() {
+      const myAllItems = myItemsDataSet.get();
+      myQuestionSelectBox.innerHTML = ''; 
+      
+      const myDefaultOption = document.createElement('option');
+      myDefaultOption.textContent = 'Select a Question to Test';
+      myDefaultOption.value = '';
+      myQuestionSelectBox.appendChild(myDefaultOption);
+
+      if (myAllItems.length === 0) {
+        return;
+      }
+
+      myAllItems.forEach(myItem => {
+        const myOption = document.createElement('option');
+        myOption.value = myItem.id;
+        myOption.textContent = `#${myItem.id} - ${myItem.content}`;
+        myQuestionSelectBox.appendChild(myOption);
+      });
+      
+      // Load the first item automatically if it exists
+      if (myAllItems.length > 0) {
+          myQuestionSelectBox.value = myAllItems[0].id;
+          myLoadQuestion(myAllItems[0].id);
+      }
+    }
+
+    // Load selected item's data into the testing area
+    function myLoadQuestion(myId) {
+      if (!myId) {
+          document.getElementById('myStoredStatement').value = '';
+          document.getElementById('myHintInput').value = '';
+          document.getElementById('myUserTest').value = '';
+          document.getElementById('myPresentNumber').value = '';
+          return;
+      }
+      
+      const myItem = myItemsDataSet.get(parseInt(myId)); 
+      
+      if (myItem) {
+        document.getElementById('myStoredStatement').value = myItem.longDescription || '';
+        document.getElementById('myHintInput').value = myItem.content || '';
+        document.getElementById('myUserTest').value = '';
+        document.getElementById('myPresentNumber').value = myId;
+      } else {
+        console.warn('Item not found with ID:', myId);
+      }
+    }
+
+    // Initial population
+    myPopulateSelectBox();
+    
+    // --- Date Utility Functions ---
+
+    // Convert ISO 8601 string to milliseconds since epoch
+    function myIsoToMillis(myIsoString) {
+      return new Date(myIsoString).getTime();
+    }
+    
+    // Convert milliseconds since epoch to an ISO 8601 datetime string in UTC
+    function myMillisToIso(myMillis) {
+      return new Date(myMillis).toISOString();
+    }
+    
+    // Convert ISO 8601 string to local datetime string (for input type="datetime-local")
+    function myIsoToLocalDateTime(myIsoString) {
+      const myDate = new Date(myIsoString);
+      const myOffset = myDate.getTimezoneOffset() * 60000;
+      const myLocalTime = new Date(myDate.getTime() - myOffset);
+      return myLocalTime.toISOString().slice(0, 16);
+    }
+    
+    // --- LLM Status / Timer Functions ---
+    
+    let myLanguageModelSession = null;
+    let myTimerInterval = null;
+    const myStatus = document.getElementById('myStatus');
+    const myOutput = document.getElementById('myOutput');
+    const myCheckButton = document.getElementById('myCheckButton');
+
+    function myStartTimer() {
+      let mySeconds = 0;
+      myStatus.textContent = "Working... 0s";
+      myTimerInterval = setInterval(() => {
+        mySeconds++;
+        myStatus.textContent = `Working... ${mySeconds}s`;
+      }, 1000);
+    }
+
+    function myStopTimer(myMessage) {
+      if (myTimerInterval) {
+        clearInterval(myTimerInterval);
+        myTimerInterval = null;
+      }
+      myStatus.textContent = myMessage;
+    }
+
+    // --- LLM & Spaced Repetition Logic ---
+
+    // Update the next review date based on a successful test
+    function myUpdateMemory(myQuestionId, myLastSuccessfulStart) {
+        
+        const myItemToUpdate = myItemsDataSet.get(parseInt(myQuestionId));
+        if (!myItemToUpdate) {
+            console.error('Item not found for update:', myQuestionId);
+            return;
+        }
+
+        const myNow = Date.now();
+        const myLastTestTime = myIsoToMillis(myLastSuccessfulStart); // This is the old 'start' time
+        
+        // 1. Calculate the duration since the last successful test
+        const myDuration = myNow - myLastTestTime; 
+        
+        // 2. Calculate the new interval (Duration * Learning Factor)
+        const myNewInterval = myDuration * myLearnFactor;
+        
+        // 3. Calculate the new start time (Now + New Interval)
+        const myNextDateTime = myNow + myNewInterval;
+        const myNewIsoStart = myMillisToIso(myNextDateTime);
+
+        // Update the item in the DataSet
+        myItemToUpdate.start = myNewIsoStart; // Set the new next review date
+        myItemToUpdate.myCorrectCount++; // Increment the correct count
+        
+        myItemsDataSet.update(myItemToUpdate);
+        
+        myStatus.textContent += ` Item #${myQuestionId} schedule updated! Correct count: ${myItemToUpdate.myCorrectCount}. Next review: ${new Date(myNextDateTime).toLocaleString()}.`;
+    }
+
+    async function myCheckSimilarity() {
+      const myStoredStatement = document.getElementById('myStoredStatement');
+      const myUserTest = document.getElementById('myUserTest');
+      const myPresentNumberInput = document.getElementById('myPresentNumber');
+      
+      const myQuestionId = myPresentNumberInput.value;
+      if (!myQuestionId) {
+          myStopTimer('Please select an item to test first.');
+          return;
+      }
+      
+      const myItem = myItemsDataSet.get(parseInt(myQuestionId));
+      if (!myItem) {
+          myStopTimer('Error: Selected item not found.');
+          return;
+      }
+
+      myCheckButton.disabled = true;
+      myCheckButton.style.backgroundColor = '#ccc';
+      myOutput.value = "";
+
+      try {
+        if (!('LanguageModel' in window)) {
+          myStopTimer("Error: LanguageModel API not available. Check Chrome flags.");
+          return;
+        }
+
+        myStartTimer();
+
+        if (!myLanguageModelSession) {
+          myStatus.textContent = 'Creating AI session...';
+          myLanguageModelSession = await LanguageModel.create();
+          myStatus.textContent = 'Session created. Sending prompt...';
+        }
+
+        const myStoredValue = myStoredStatement.value.trim();
+        const myUserValue = myUserTest.value.trim();
+
+        if (!myStoredValue || !myUserValue) {
+          myStopTimer('Please fill in both Your Recall/Answer and ensure a question is loaded.');
+          return;
+        }
+        
+        const myPrompt = `Compare the meaning of the following two statements and determine if they express the same general idea. Ignore differences in letter casing (e.g., uppercase vs lowercase). Only respond with one word: "same" if they mean the same thing, or "different" if they do not. Do not explain your answer.\nStatement 1: ${myStoredValue}\nStatement 2: ${myUserValue}`;
+
+        const myResponse = await myLanguageModelSession.prompt(myPrompt);
+        
+        const myResult = myResponse.trim().toLowerCase();
+        const myIsSame = myResult === 'same';
+        
+        myOutput.value = myIsSame ? '✅ Same (Correct)' : '❌ Different (Incorrect)';
+        myStopTimer(`Comparison complete! Result: ${myIsSame ? 'Correct' : 'Incorrect'}`);
+        
+        // --- Spaced Repetition Logic Execution ---
+        if (myIsSame) {
+            // If the answer is correct, update the memory schedule
+            // Pass the item's current 'start' time (which is the last successful test time)
+            myUpdateMemory(myQuestionId, myItem.start);
+        } else {
+             // Incorrect: Reset interval to now (or a very short time)
+            const myNow = new Date().toISOString();
+            myItem.start = myNow;
+            myItemsDataSet.update(myItem);
+            myStatus.textContent += ` Item #${myQuestionId} schedule reset to now.`;
+        }
+
+      } catch (myError) {
+        myStopTimer("An error occurred. Check the console for details.");
+        console.error("Error:", myError);
+      } finally {
+        myCheckButton.disabled = false;
+        myCheckButton.style.backgroundColor = '#4CAF50';
+      }
+    }
+  </script>
+
+</body>
+</html>
