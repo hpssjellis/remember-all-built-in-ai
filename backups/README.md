@@ -21,15 +21,27 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index15.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index16.html
 
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index17.html
-
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index17.html
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index17.html    Getting interesting
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index18.html
 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index19.html
 
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index2.html
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index20.html
+
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index21.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index22.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index23.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index24.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index25.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index26.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index27.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index28.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index29.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index3.html  
+
+
+
 
 
 
