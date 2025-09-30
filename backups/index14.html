@@ -400,6 +400,7 @@
         if (myIsSame) {
             // If the answer is correct, update the memory schedule
             myUpdateMemory(myQuestionId, myItem.start);
+          console.log('correct')
         } else {
              // Optional: Reset interval to a short time if incorrect
             const myNow = new Date().toISOString();
