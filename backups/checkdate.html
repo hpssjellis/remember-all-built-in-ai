@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DateTime Local Example</title>
+</head>
+<body>
+  <p>Enter or pick a date and time:</p>
+  <input type="datetime-local" id="myEntryDate" style="width:220px; margin-right:20px;"><br><br>
+
+  <input type="button" value="Check Date" onclick="myCheckDate()">
+
+  <p id="myResult"></p>
+
+  <script>
+    function myCheckDate() {
+      let myInput = document.getElementById('myEntryDate');
+      let myValue = myInput.value;
+
+      if (!myValue) {
+        document.getElementById('myResult').innerText = "❌ No date entered.";
+        return;
+      }
+
+      // Try to parse into a Date object
+      let myDate = new Date(myValue);
+
+      if (isNaN(myDate.getTime())) {
+        document.getElementById('myResult').innerText = "❌ Invalid format. Use YYYY-MM-DDTHH:MM";
+      } else {
+        document.getElementById('myResult').innerText = "✅ Valid date: " + myDate.toString();
+      }
+    }
+  </script>
+</body>
+</html>
