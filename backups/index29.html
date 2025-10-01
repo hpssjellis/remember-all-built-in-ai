@@ -377,56 +377,21 @@
       myTooltip.style.left = myEvent.pageX + 10 + 'px';
       myTooltip.style.top = myEvent.pageY + 10 + 'px';
     });
-    
-    /**
-     * Handles item double-click, reveals the answer, and removes the item from the
-     * test selection box to prevent 'cheating'.
-     */
+
     function myTimelineDoubleClick(props) {
       const myItem = myItemsDataSet.get(props.item);
       if (myItem && myItem.longDescription) {
         myTooltip.innerHTML = `**ANSWER:**<br>${myItem.longDescription.replace(/\n/g, '<br>')}`;
         myTooltip.style.display = 'block';
         setTimeout(() => { myTooltip.style.display = 'none'; }, 3000);
-        
-        // NEW: Remove from select box when answer is revealed
-        myRemoveFromSelectBox(props.item); 
       }
     }
     
-    /**
-     * Handles item single-click, loads the item for editing, and removes the item from the
-     * test selection box to prevent 'cheating'.
-     */
     function myTimelineClick(props) {
       if (props.item !== null) {
           myLoadItemForEdit(props.item);
-          // NEW: Remove from select box when item is loaded for editing
-          myRemoveFromSelectBox(props.item); 
       }
     }
-
-    // --- Utility Function to Prevent Cheating ---
-    /**
-     * Removes a specific item ID from the test question select box.
-     * @param {number} myId - The ID of the item to remove.
-     */
-    function myRemoveFromSelectBox(myId) {
-        const myOption = myQuestionSelectBox.querySelector(`option[value="${myId}"]`);
-        if (myOption) {
-            myOption.remove();
-            
-            // If the removed item was the one currently selected in the Test section, clear the inputs
-            if (document.getElementById('myPresentNumber').value === String(myId)) {
-                myLoadQuestion(null);
-            }
-            
-            // Re-run the population logic to update the default selected item or status message
-            myPopulateSelectBox();
-            myStatus.textContent = `Item #${myId} removed from the Test box to prevent cheating!`;
-        }
-    }
-
 
     // --- Entry Form / Data Management Functions (Continued) ---
     const myEntryIdInput = document.getElementById('myEntryId');
@@ -786,7 +751,7 @@
     }
     
     // --- LLM Status / Timer Functions ---
-
+    
     let myLanguageModelSession = null;
     let myTimerInterval = null;
     const myCheckButton = document.getElementById('myCheckButton');
