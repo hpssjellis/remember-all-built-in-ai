@@ -87,19 +87,31 @@
   <!-- Entry Form -->
   <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; max-width: 600px;">
     <h3>Add/Edit Item</h3>
+    
     <label for="myEntryId" style="display: inline-block; width: 50px;">ID:</label>
     <input type="number" id="myEntryId" readonly style="width: 60px; margin-right: 20px;" />
     <label for="myEntryDate" style="display: inline-block; width: 50px;">Date:</label>
     <input type="datetime-local" id="myEntryDate" style="width: 220px; margin-right: 20px;" /><br /><br />
 
     <label for="myEntryContent" style="display: block; font-weight: bold;">Content (Hint):</label>
-    <input type="text" id="myEntryContent" style="width: 100%; margin-bottom: 10px;" placeholder="Enter content" />
+    <input type="text" id="myEntryContent" style="width: 100%; margin-bottom: 10px;" placeholder="Enter concept or question here (e.g., 'Photosynthesis')" />
 
     <label for="myEntryLongDescription" style="display: block; font-weight: bold;">Long Description (Answer):</label>
-    <textarea id="myEntryLongDescription" rows="4" style="width: 100%; margin-bottom: 10px;" placeholder="Enter long description/correct answer"></textarea>
+    <textarea id="myEntryLongDescription" rows="4" style="width: 100%; margin-bottom: 10px;" placeholder="Enter long description/correct answer (or click 'Generate Answer')"></textarea>
 
-    <button id="myNextEntryButton" style="margin-right: 10px;" onclick="myAutofillNextEntry()">Next Entry (Clear)</button>
+    <!-- New LLM Button to generate only the long description -->
+    <button 
+      id="myGenerateDescriptionButton" 
+      onclick="myGenerateLongDescription()" 
+      style="margin-right: 10px; padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+      Generate Answer (LLM)
+    </button>
+
     <button id="myAddEntryButton" onclick="myAddEntry(); myPopulateSelectBox(); mySaveToLocalStorage();">Add / Update</button>
+    <button id="myNextEntryButton" style="margin-right: 10px;" onclick="myAutofillNextEntry()">Next Entry (Clear)</button>
+    <div id="myGenerationStatus" style="font-style: italic; color: #007bff;">Ready to Generate.</div>
+    <!-- New Delete Button -->
+    <button id="myDeleteEntryButton" onclick="myDeleteEntry()" style="margin-left: 10px; padding: 8px 12px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete Entry</button>
   </div>
   
   <!-- Height Controls -->
@@ -136,9 +148,23 @@
   <hr style="margin: 40px 0;">
   <div style="font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px;">
     <h1>Chrome Built-in AI: Statement Comparison Tool</h1>
+    
+    <!-- NEW: Minimum One Day Checkbox for Scheduling Mode -->
+    <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #007bff; border-radius: 4px; background-color: #f0f8ff;">
+        <input type="checkbox" id="myMinimumOneDayCheckbox" checked>
+        <label for="myMinimumOneDayCheckbox" style="font-weight: bold; color: #007bff;">
+            Minimum One Day for Success (Long-Term Mode)
+        </label>
+        <p style="font-size: 0.85em; margin: 5px 0 0 0;">
+            <span style="font-weight: bold;">Checked:</span> Schedules next review at least 1 day out on success (Standard SRS).
+            <span style="font-weight: bold;">Unchecked:</span> Schedules next review based on actual minutes elapsed (Rapid Test Study Mode).
+        </p>
+    </div>
+
     <div class="factor-box" id="myFactorDisplay">
         <!-- Factor values will be displayed here -->
     </div>
+    
     <div style="margin-top: 20px;">
       <h2>Test Your Memory</h2>
         
@@ -168,6 +194,14 @@
       
       <button id="myProcessImportButton" style="display: none; margin-top: 5px;" onclick="myProcessImportData()">Process Imported Data</button>
     </div>
+    <!-- Attribution section added to the bottom of the main content area -->
+    <div>
+      Use at your own risk!<br>
+      By Jeremy Ellis <br>
+      <a href="https://github.com/hpssjellis">Github Profile</a><br>
+      <a href="https://ca.linkedin.com/in/jeremy-ellis-4237a9bb">LinkedIn Profile</a><br>
+      <a href="https://github.com/hpssjellis/remember-all-built-in-ai">Remember-All Github</a><br>
+    </div>
   </div>
 
   <!-- --- -->
@@ -181,12 +215,18 @@
     const myStatus = document.getElementById('myStatus');
     const myOutput = document.getElementById('myOutput');
     const myProcessImportButton = document.getElementById('myProcessImportButton');
+    
+    // UI Elements for LLM interaction
+    const myGenerateDescriptionButton = document.getElementById('myGenerateDescriptionButton'); 
+    const myGenerationStatus = document.getElementById('myGenerationStatus'); // Local status element
 
     // Spaced Repetition Learning Factor (Single Ease Factor Model)
     const myEaseFactor = { value: 2.50 }; // Initial Ease Factor (EF)
     const myFactorMax = 3.0; // Your suggested maximum
     const myFactorMin = 1.1; // Minimum must be > 1.0 to ensure interval grows on success
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const MIN_TEST_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum base interval for Test Study Mode
+
     
     // Default Data Set (used if no data in localStorage)
     const myDefaultData = [
@@ -211,6 +251,10 @@
     // Timeline Data Storage (Initialized in myInitializeApp)
     let myItemsDataSet;
     let myTimeline;
+    
+    // UI Element for the new mode control
+    const myMinimumOneDayCheckbox = document.getElementById('myMinimumOneDayCheckbox');
+
 
     // --- Factor Display UI ---
     function myUpdateFactorDisplay() {
@@ -222,7 +266,7 @@
                 (Interval Multiplier)
             </div>
             <div>
-                <small>Factor Range: ${myFactorMin.toFixed(1)} (Hardest) to ${myFactorMax.toFixed(1)} (Easiest)</small>
+                <small>Factor Range: ${myFactorMin.toFixed(1)} (Shorter Duration) to ${myFactorMax.toFixed(1)} (Longer Duration)</small>
             </div>
         `;
     }
@@ -233,11 +277,18 @@
         try {
             const myStoredData = localStorage.getItem('myTimelineData');
             const myStoredFactors = localStorage.getItem('mySRSFactors');
+            const myStoredSettings = localStorage.getItem('mySRSSettings');
             
             if (myStoredFactors) {
                 const factors = JSON.parse(myStoredFactors);
                 // Load single Ease Factor
                 myEaseFactor.value = factors.easeFactor || 2.50;
+            }
+            
+            if (myStoredSettings && myMinimumOneDayCheckbox) {
+                const settings = JSON.parse(myStoredSettings);
+                // Load checkbox state, default to checked (Long-Term Mode)
+                myMinimumOneDayCheckbox.checked = settings.minimumOneDay !== false; 
             }
 
             if (myStoredData) {
@@ -259,6 +310,8 @@
             localStorage.setItem('myTimelineData', JSON.stringify(myDataToSave));
             // Save single Ease Factor
             localStorage.setItem('mySRSFactors', JSON.stringify({ easeFactor: myEaseFactor.value }));
+            // Save settings (new)
+            localStorage.setItem('mySRSSettings', JSON.stringify({ minimumOneDay: myMinimumOneDayCheckbox.checked }));
             myStatus.textContent = `Data and factors saved to Local Storage (${myDataToSave.length} items).`;
         } catch (myError) {
             console.error("Error saving data to local storage:", myError);
@@ -281,6 +334,12 @@
         myTimeline.on('itemout', myTimelineItemOut);
         myTimeline.on('doubleClick', myTimelineDoubleClick);
         myTimeline.on('click', myTimelineClick);
+        
+        // Add listener to save settings immediately when the box is clicked
+        if (myMinimumOneDayCheckbox) {
+            myMinimumOneDayCheckbox.addEventListener('change', mySaveToLocalStorage);
+        }
+
 
         myUpdateFactorDisplay();
         myAutofillNextEntry();
@@ -385,8 +444,30 @@
         return;
       }
 
-      const myIsoString = new Date(myDateTimeLocal).toISOString();
+      const myAllItems = myItemsDataSet.get();
       const myExistingItem = myItemsDataSet.get(myId);
+
+      // --- Hint Uniqueness Check ---
+      const myDuplicate = myAllItems.find(item => 
+          item.content.toLowerCase() === myContent.toLowerCase() && 
+          item.id !== myId // Allow the current item to keep its own hint during an update
+      );
+
+      if (myDuplicate) {
+          myStatus.textContent = `Error: The Content (Hint) "${myContent}" already exists in Item #${myDuplicate.id}. Please use a unique hint.`;
+          return;
+      }
+
+      // --- ID Uniqueness Check (Only needed if adding a new item) ---
+      if (!myExistingItem) {
+          const myIdExists = myAllItems.some(item => item.id === myId);
+          if (myIdExists) {
+              myStatus.textContent = `Error: Cannot add. Item ID #${myId} already exists. Click 'Next Entry (Clear)' to get a new ID.`;
+              return;
+          }
+      }
+
+      const myIsoString = new Date(myDateTimeLocal).toISOString();
 
       if (myExistingItem) {
         myExistingItem.content = myContent;
@@ -409,6 +490,36 @@
       myAutofillNextEntry();
     }
     
+    /**
+     * Deletes the currently selected item in the form (based on myEntryIdInput).
+     * Includes a confirmation dialog for safety.
+     */
+    function myDeleteEntry() {
+      const myId = Number(myEntryIdInput.value);
+      const myItem = myItemsDataSet.get(myId);
+      
+      if (!myId || !myItem) {
+          myStatus.textContent = 'Error: No item selected or ID is invalid for deletion.';
+          return;
+      }
+      
+      // IMPORTANT: Use confirm() only temporarily as per mandatory rules, in a real app this would be a custom modal.
+      if (confirm(`Are you sure you want to delete item #${myId}: "${myItem.content}"? This cannot be undone.`)) {
+          try {
+              myItemsDataSet.remove(myId);
+              mySaveToLocalStorage();
+              myPopulateSelectBox();
+              myAutofillNextEntry(); // Clear form and prepare for new entry
+              myStatus.textContent = `Item #${myId} deleted successfully.`;
+          } catch (myError) {
+              console.error("Error deleting item:", myError);
+              myStatus.textContent = "Error during deletion. Check console.";
+          }
+      } else {
+          myStatus.textContent = `Deletion of item #${myId} cancelled.`;
+      }
+    }
+
     // --- Data Export Functions ---
     
     function myDownloadFile(myContent, myFileName, myMimeType) {
@@ -563,6 +674,7 @@
             myItemsDataSet.clear();
             localStorage.removeItem('myTimelineData');
             localStorage.removeItem('mySRSFactors');
+            localStorage.removeItem('mySRSSettings'); // Clear settings as well
             myEaseFactor.value = 2.50; // Reset to default
             myUpdateFactorDisplay();
             myPopulateSelectBox();
@@ -643,14 +755,19 @@
     let myLanguageModelSession = null;
     let myTimerInterval = null;
     const myCheckButton = document.getElementById('myCheckButton');
-    const myLlmOutput = document.getElementById('myOutput'); // Renamed local var to avoid conflict
+    const myLlmOutput = document.getElementById('myOutput'); 
 
     function myStartTimer() {
       let mySeconds = 0;
-      myStatus.textContent = "Working... 0s";
+      const myInitialMessage = "Working... 0s";
+      myStatus.textContent = myInitialMessage;
+      if (myGenerationStatus) myGenerationStatus.textContent = myInitialMessage; // Update local status
+      
       myTimerInterval = setInterval(() => {
         mySeconds++;
-        myStatus.textContent = `Working... ${mySeconds}s`;
+        const myTimeMessage = `Working... ${mySeconds}s`;
+        myStatus.textContent = myTimeMessage;
+        if (myGenerationStatus) myGenerationStatus.textContent = myTimeMessage; // Update local status
       }, 1000);
     }
 
@@ -660,6 +777,7 @@
         myTimerInterval = null;
       }
       myStatus.textContent = myMessage;
+      if (myGenerationStatus) myGenerationStatus.textContent = myMessage; // Update local status
     }
 
     // --- LLM & Spaced Repetition Logic ---
@@ -675,24 +793,12 @@
         const myNow = Date.now();
         const myLastScheduledReviewTime = myIsoToMillis(myLastScheduledReviewTimeIso); 
         
-        // myTimeDifference is how much time passed since the item was DUE (positive = overdue)
-        const myTimeDifference = myNow - myLastScheduledReviewTime; 
+        // myActualDuration is the time elapsed since the item was last due/scheduled
+        const myActualDuration = myNow - myLastScheduledReviewTime; 
         
-        // Interval calculation uses the time since the last schedule was set
-        // The time elapsed since the item was due should be factored in to determine the new interval length
-        // We use the time elapsed since the ORIGINAL start time (myItemToUpdate.myOriginalStart) if myCorrectCount is 0,
-        // otherwise, we use the time since the last successful review (myItemToUpdate.start).
-        
-        // The calculated 'myDuration' is the length of the interval that was successfully recalled.
-        // It's crucial to calculate this duration based on the actual time between when the item was previously scheduled (myItemToUpdate.start) and NOW, 
-        // to correctly scale the next interval.
-        
-        // Use the time since the last scheduled review date as the previous interval length.
-        const myPrevIntervalLength = myNow - myLastScheduledReviewTime;
-        // Ensure minimum interval length if it's the very first success or a reset (handled by myCorrectCount)
-        const myDuration = Math.max(myPrevIntervalLength, ONE_DAY_MS); 
-        
-        let myNextDateTime;
+        const isMinimumOneDayChecked = myMinimumOneDayCheckbox.checked;
+
+        let myDuration;
         let myMessage;
         let myAdjustmentMessage = '';
         
@@ -701,14 +807,24 @@
         if (myIsCorrect) {
             // --- SUCCESSFUL TEST LOGIC (Next interval is scaled by current ease factor) ---
             
-            // Calculate the new interval using the ease factor
-            const myNewInterval = myDuration * myEaseFactor.value;
-            myNextDateTime = myNow + myNewInterval;
             myItemToUpdate.myCorrectCount++; 
             myMessage = `schedule stretched! Correct count: ${myItemToUpdate.myCorrectCount}.`;
             
+            if (isMinimumOneDayChecked) {
+                // LONG-TERM MODE (Original behavior): Minimum 1 day base interval
+                myDuration = Math.max(myActualDuration, ONE_DAY_MS); 
+            } else {
+                // RAPID TEST STUDY MODE (New behavior): Use actual elapsed time, but ensure a 5-minute minimum seed
+                myDuration = Math.max(myActualDuration, MIN_TEST_INTERVAL_MS);
+            }
+            
+            // Calculate the new interval using the ease factor
+            const myNewInterval = myDuration * myEaseFactor.value;
+            myNextDateTime = myNow + myNewInterval;
+
+
             // Factor adjustment based on duration
-            if (myTimeDifference > ONE_DAY_MS * 2) { 
+            if (myActualDuration > ONE_DAY_MS * 2) { 
                 // Tested very late (high resilience) -> Stronger reward
                 myEaseFactor.value = Math.min(myEaseFactor.value + myFactorAdjustment, myFactorMax);
                 myAdjustmentMessage = `Ease Factor increased by ${myFactorAdjustment.toFixed(2)} (Tested very late & correct).`;
@@ -728,7 +844,7 @@
             myItemToUpdate.myCorrectCount = 0; 
 
             // Factor adjustment based on failure timing
-            if (myTimeDifference < ONE_DAY_MS * 3) {
+            if (myActualDuration < ONE_DAY_MS * 3) {
                 // Failed on time or slightly late (forgot relatively fresh fact) -> Harshest penalty
                 myEaseFactor.value = Math.max(myEaseFactor.value - (myFactorAdjustment * 2), myFactorMin); 
                 myAdjustmentMessage = `Ease Factor decreased by ${(myFactorAdjustment * 2).toFixed(2)} (Failed close to due date).`;
@@ -785,7 +901,7 @@
               outputLanguage: 'en' 
           };
           myLanguageModelSession = await LanguageModel.create(mySessionOptions);
-          myStatus.textContent = 'Session created. Sending prompt...';
+          myStopTimer('Session created. Sending prompt...');
         }
 
         const myStoredValue = myStoredStatement.value.trim();
@@ -817,6 +933,66 @@
         myPopulateSelectBox(); 
       }
     }
+
+    // --- New LLM Function to generate only the Long Description ---
+    async function myGenerateLongDescription() {
+      const myContentInput = document.getElementById('myEntryContent');
+      const myLongDescriptionInput = document.getElementById('myEntryLongDescription');
+      const myContent = myContentInput.value.trim();
+
+      if (!myContent) {
+        myStopTimer('Please enter a concept or term in the "Content (Hint)" field first.');
+        return;
+      }
+
+      myGenerateDescriptionButton.disabled = true;
+      myGenerateDescriptionButton.textContent = 'Generating...';
+      myGenerateDescriptionButton.style.backgroundColor = '#ccc';
+      myLlmOutput.value = ''; // Clear LLM output area
+
+      try {
+        if (!('LanguageModel' in window)) {
+          myStopTimer("Error: LanguageModel API not available. Check Chrome flags.");
+          return;
+        }
+
+        myStartTimer();
+
+        // Create a dedicated session for content generation
+        const mySessionOptions = {
+            // Updated system instruction for conciseness
+            systemInstruction: `You are an expert summarizer and fact generator for flashcards. Given a short term, concept, or question (the Hint), your task is to provide the shortest, most concise, and accurate factual summary or answer possible (the Long Description). The response MUST be a single, short sentence or a few key facts, perfect for memorization. Do not include the original Hint in your response.`,
+            outputLanguage: 'en' 
+        };
+        const myLanguageModelSessionForGeneration = await LanguageModel.create(mySessionOptions);
+
+        // Updated prompt for the user query to reinforce brevity
+        const myPrompt = `Provide a concise, single-sentence or just a few word summary or key facts for the following Hint: ${myContent}`;
+
+        const myResponse = await myLanguageModelSessionForGeneration.prompt(myPrompt);
+        
+        const myGeneratedDescription = myResponse.trim();
+        
+        // Populate the long description field (Primary destination)
+        myLongDescriptionInput.value = myGeneratedDescription;
+        
+        // Duplicate the generated content to the main output area (Secondary destination - NEW)
+        myLlmOutput.value = `Generated Answer for "${myContent}":\n\n---\n${myGeneratedDescription}\n---`;
+
+        myStopTimer(`Content generated for "${myContent}". Review and click 'Add / Update' to save.`);
+
+      } catch (myError) {
+        myStopTimer("An error occurred during content generation. Check the console for details.");
+        console.error("Content Generation Error:", myError);
+        myLongDescriptionInput.value = "Failed to generate content. See status message for details.";
+      } finally {
+        myGenerateDescriptionButton.disabled = false;
+        myGenerateDescriptionButton.textContent = 'Generate Answer (LLM)';
+        // Reset to original styling
+        myGenerateDescriptionButton.style.backgroundColor = '#007bff'; 
+      }
+    }
+
 
     // --- Initialization on Load ---
     window.onload = myInitializeApp;
