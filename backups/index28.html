@@ -961,13 +961,13 @@
         // Create a dedicated session for content generation
         const mySessionOptions = {
             // Updated system instruction for conciseness
-            systemInstruction: `You are an expert summarizer and fact generator for flashcards. Given a short term, concept, or question (the Hint), your task is to provide the shortest, most concise, and accurate factual summary or answer possible (the Long Description). The response MUST be a single, short paragraph or a few key facts, perfect for memorization. Do not include the original Hint in your response.`,
+            systemInstruction: `You are an expert summarizer and fact generator for flashcards. Given a short term, concept, or question (the Hint), your task is to provide the shortest, most concise, and accurate factual summary or answer possible (the Long Description). The response MUST be a single, short sentence or a few key facts, perfect for memorization. Do not include the original Hint in your response.`,
             outputLanguage: 'en' 
         };
         const myLanguageModelSessionForGeneration = await LanguageModel.create(mySessionOptions);
 
         // Updated prompt for the user query to reinforce brevity
-        const myPrompt = `Provide a concise, single-paragraph summary or key facts for the following Hint: ${myContent}`;
+        const myPrompt = `Provide a concise, single-sentence or just a few word summary or key facts for the following Hint: ${myContent}`;
 
         const myResponse = await myLanguageModelSessionForGeneration.prompt(myPrompt);
         
