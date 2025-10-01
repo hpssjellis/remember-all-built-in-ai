@@ -23,9 +23,9 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index21.html
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index22.html    
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index23.html   new stable Sept 29th, 2025  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index24.html    
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index25.html    
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index26.html  
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index27.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index25.html   delete button fix LLM 
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index26.html  minor fixes
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index27.html  Nice
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index28.html  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index29.html  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index3.html  
