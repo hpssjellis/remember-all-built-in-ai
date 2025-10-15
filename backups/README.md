@@ -30,8 +30,8 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index28.html  New 
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index29.html  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index30.html  found out upload files does not work.   
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index31.html  
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index32.html  need to test might be new stable
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index33.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index32.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index33.html  possibly new stable need to test it   
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index34.html  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index35.html  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index36.html  
