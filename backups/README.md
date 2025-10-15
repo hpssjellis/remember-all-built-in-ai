@@ -28,7 +28,13 @@ https://hpssjellis.github.io/remember-all-built-in-ai/backups/index26.html  mino
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index27.html  Nice  
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index28.html  New Stable Sept 30th, 2025
 https://hpssjellis.github.io/remember-all-built-in-ai/backups/index29.html  
-https://hpssjellis.github.io/remember-all-built-in-ai/backups/index3.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index30.html  found out upload files does not work.   
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index31.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index32.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index33.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index34.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index35.html  
+https://hpssjellis.github.io/remember-all-built-in-ai/backups/index36.html  
 
 
 
