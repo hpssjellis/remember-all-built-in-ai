@@ -5,7 +5,7 @@ A memory helping page that uses the Chrome Built in AI to check your information
 Demo at   https://hpssjellis.github.io/remember-all-built-in-ai/
 
 
-https://www.youtube.com/watch?v=BKM3X6AA824&list=PL57Dnr1H_egsvfrvJdJdeVPaHVmy87S0i&index=2&pp=iAQB
+
 
 
 [https://www.youtube.com/watch?v=BKM3X6AA824&list=PL57Dnr1H_egsvfrvJdJdeVPaHVmy87S0i&index=2&pp=iAQB
