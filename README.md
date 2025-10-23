@@ -4,7 +4,9 @@ A memory helping page that uses the Chrome Built in AI to check your information
 
 Demo at   https://hpssjellis.github.io/remember-all-built-in-ai/
 
+Create time line testing words using the chrome Prompt LLM
 
+Then with the timeline test if you know the information with repetition.
 
 
 
